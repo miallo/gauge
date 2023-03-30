@@ -18,20 +18,22 @@ import (
 )
 
 const (
-	initial             = 1 << iota
-	specScope           = 1 << iota
-	scenarioScope       = 1 << iota
-	commentScope        = 1 << iota
-	tableScope          = 1 << iota
-	tableSeparatorScope = 1 << iota
-	tableDataScope      = 1 << iota
-	stepScope           = 1 << iota
-	contextScope        = 1 << iota
-	tearDownScope       = 1 << iota
-	conceptScope        = 1 << iota
-	keywordScope        = 1 << iota
-	tagsScope           = 1 << iota
-	newLineScope        = 1 << iota
+	initial               = 1 << iota
+	specScope             = 1 << iota
+	disabledSpecScope     = 1 << iota
+	scenarioScope         = 1 << iota
+	disabledScenarioScope = 1 << iota
+	commentScope          = 1 << iota
+	tableScope            = 1 << iota
+	tableSeparatorScope   = 1 << iota
+	tableDataScope        = 1 << iota
+	stepScope             = 1 << iota
+	contextScope          = 1 << iota
+	tearDownScope         = 1 << iota
+	conceptScope          = 1 << iota
+	keywordScope          = 1 << iota
+	tagsScope             = 1 << iota
+	newLineScope          = 1 << iota
 )
 
 // Token defines the type of entity identified by the lexer
@@ -84,8 +86,12 @@ func (parser *SpecParser) GenerateTokens(specText, fileName string) ([]*Token, [
 			newToken = &Token{Kind: gauge.CommentKind, LineNo: parser.lineNo, Lines: []string{line}, Value: "\n", SpanEnd: parser.lineNo}
 		} else if parser.isScenarioHeading(trimmedLine) {
 			newToken = &Token{Kind: gauge.ScenarioKind, LineNo: parser.lineNo, Lines: []string{line}, Value: strings.TrimSpace(trimmedLine[2:]), SpanEnd: parser.lineNo}
+		} else if parser.isDisabledScenarioHeading(trimmedLine) {
+			newToken = &Token{Kind: gauge.DisabledScenarioKind, LineNo: parser.lineNo, Lines: []string{line}, Value: strings.TrimSpace(trimmedLine[2:]), SpanEnd: parser.lineNo}
 		} else if parser.isSpecHeading(trimmedLine) {
 			newToken = &Token{Kind: gauge.SpecKind, LineNo: parser.lineNo, Lines: []string{line}, Value: strings.TrimSpace(trimmedLine[1:]), SpanEnd: parser.lineNo}
+		} else if parser.isDisabledSpecHeading(trimmedLine) {
+			newToken = &Token{Kind: gauge.DisabledSpecKind, LineNo: parser.lineNo, Lines: []string{line}, Value: strings.TrimSpace(trimmedLine[1:]), SpanEnd: parser.lineNo}
 		} else if parser.isSpecUnderline(trimmedLine) {
 			if isInState(parser.currentState, commentScope) {
 				newToken = parser.tokens[len(parser.tokens)-1]
@@ -171,11 +177,29 @@ func (parser *SpecParser) isSpecHeading(text string) bool {
 	return text[0] == '#'
 }
 
+func (parser *SpecParser) isDisabledSpecHeading(text string) bool {
+	if len(text) > 2 {
+		return text[0] == 'x' && text[1] == '#' && text[2] != '#'
+	} else if len(text) == 2 {
+		return text[0] == 'x' && text[1] == '#'
+	}
+	return text[0] == '#'
+}
+
 func (parser *SpecParser) isScenarioHeading(text string) bool {
 	if len(text) > 2 {
 		return text[0] == '#' && text[1] == '#' && text[2] != '#'
 	} else if len(text) == 2 {
 		return text[0] == '#' && text[1] == '#'
+	}
+	return false
+}
+
+func (parser *SpecParser) isDisabledScenarioHeading(text string) bool {
+	if len(text) > 3 {
+		return text[0] == 'x' && text[1] == '#' && text[2] == '#' && text[3] != '#'
+	} else if len(text) == 3 {
+		return text[0] == 'x' && text[1] == '#' && text[2] == '#'
 	}
 	return false
 }

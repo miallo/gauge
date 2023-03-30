@@ -29,6 +29,19 @@ func (parser *SpecParser) initializeConverters() []func(*Token, *int, *gauge.Spe
 		return ParseResult{Ok: true}
 	})
 
+	disabledSpecConverter := converterFn(func(token *Token, state *int) bool {
+		return token.Kind == gauge.DisabledSpecKind
+	}, func(token *Token, spec *gauge.Specification, state *int) ParseResult {
+        // FIXME: We probably don't care about disabled duplicate headings
+		if spec.Heading != nil {
+			return ParseResult{Ok: false, ParseErrors: []ParseError{ParseError{spec.FileName, token.LineNo, token.SpanEnd, "Multiple spec headings found in same file", token.LineText()}}}
+		}
+
+		spec.AddHeading(&gauge.Heading{LineNo: token.LineNo, Value: token.Value, SpanEnd: token.SpanEnd})
+		addStates(state, disabledSpecScope)
+		return ParseResult{Ok: true}
+	})
+
 	scenarioConverter := converterFn(func(token *Token, state *int) bool {
 		return token.Kind == gauge.ScenarioKind
 	}, func(token *Token, spec *gauge.Specification, state *int) ParseResult {
@@ -47,7 +60,7 @@ func (parser *SpecParser) initializeConverters() []func(*Token, *int, *gauge.Spe
 		scenario.AddHeading(&gauge.Heading{Value: token.Value, LineNo: token.LineNo, SpanEnd: token.SpanEnd})
 		spec.AddScenario(scenario)
 
-		retainStates(state, specScope)
+		retainStates(state, specScope, disabledSpecScope)
 		addStates(state, scenarioScope)
 		return ParseResult{Ok: true}
 	})
@@ -61,7 +74,7 @@ func (parser *SpecParser) initializeConverters() []func(*Token, *int, *gauge.Spe
 			return ParseResult{ParseErrors: parseDetails.ParseErrors, Ok: false, Warnings: parseDetails.Warnings}
 		}
 		latestScenario.AddStep(stepToAdd)
-		retainStates(state, specScope, scenarioScope)
+		retainStates(state, specScope, scenarioScope, disabledSpecScope, disabledScenarioScope)
 		addStates(state, stepScope)
 		if parseDetails != nil && len(parseDetails.ParseErrors) > 0 {
 			return ParseResult{ParseErrors: parseDetails.ParseErrors, Ok: false, Warnings: parseDetails.Warnings}
@@ -275,7 +288,7 @@ func (parser *SpecParser) initializeConverters() []func(*Token, *int, *gauge.Spe
 				result = ParseResult{Ok: true, Warnings: warnings}
 			}
 		}
-		retainStates(state, specScope, scenarioScope, stepScope, contextScope, tearDownScope, tableScope, tableSeparatorScope)
+		retainStates(state, specScope, disabledSpecScope, scenarioScope, disabledScenarioScope, stepScope, contextScope, tearDownScope, tableScope, tableSeparatorScope)
 		return result
 	})
 
@@ -307,7 +320,7 @@ func (parser *SpecParser) initializeConverters() []func(*Token, *int, *gauge.Spe
 	})
 
 	converter := []func(*Token, *int, *gauge.Specification) ParseResult{
-		specConverter, scenarioConverter, stepConverter, contextConverter, commentConverter, tableHeaderConverter, tableRowConverter, tagConverter, keywordConverter, tearDownConverter, tearDownStepConverter,
+		specConverter,disabledSpecConverter, scenarioConverter, stepConverter, contextConverter, commentConverter, tableHeaderConverter, tableRowConverter, tagConverter, keywordConverter, tearDownConverter, tearDownStepConverter,
 	}
 
 	return converter

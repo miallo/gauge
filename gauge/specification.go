@@ -21,8 +21,10 @@ type TokenKind int
 
 const (
 	SpecKind TokenKind = iota
+	DisabledSpecKind
 	TagKind
 	ScenarioKind
+	DisabledScenarioKind
 	CommentKind
 	StepKind
 	TableHeader
